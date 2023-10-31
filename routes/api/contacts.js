@@ -1,123 +1,39 @@
-
-const express = require('express');
-const data = require("../../models/contacts");
+const express = require('express')
+const ctrl = require("../../controllers/contacts")
 const router = express.Router()
-const Joi = require("joi")
-const addSchema = Joi.object({
-  name:Joi.string().required().alphanum().min(3).max(30),
-  email:Joi.string().email({ minDomainSegments: 2, tlds: { allow: ['com', 'net'] } }).required(),
-  phone:Joi.number().required(),
-})
+const schemas = require("../../schemas/contacts")
 
-const {
-  listContacts,
-  getContactById,
-  removeContact,
-  addContact,
-  updateContact,
-} = require('../../models/contacts');
-
-const additionSchema = Joi.object({
-  name: Joi.string().alphanum().required(),
-  email: Joi.string().email().required(),
-  phone: Joi.string()
-    .regex(/^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/)
-    .required(),
-});
-
-const updateSchema = Joi.object({
-  name: Joi.string().alphanum(),
-  email: Joi.string().email(),
-  phone: Joi.string().regex(
-    /^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/
-  ),
-}).xor('name', 'email', 'phone');
-
-router.get('/', async (_, res) => {
-  try {
-    const result = await listContacts();
-
-    res.json(result);
-  } catch {
-    res.status(500).json({ text: 'Server error has occured.' });
+const isValidId = (req, res, next) => {
+  const { id } = req.params;
+  if(!isValidObjectId(id)) {
+      next(HttpError(400, `${id} is not valid id`))
   }
-})
+  next();
+}
 
-router.get('/:id', async (req, res) => {
-  const contactId = req.params.contactId;
-
-  try {
-    const data = await getContactById(contactId);
-
-    if (!result) {
-      res.status(404).json({ message: 'Contact has not been found.' });
-    }
-
-    res.json(result);
-  } catch {
-    res.status(500).json({ text: 'Server error has occured.' });
+const validateBody = schema => {
+  const func = (req, res, next) => {
+      const {error} = schema.validate(req.body);
+      if(error) {
+        next(HttpError(400, error.message));
+      }
+      next()
   }
-})
+  return func;
+}
 
-router.post('/', async (req, res) => {
-  const body = req.body;
 
-  const { error: validationError } = additionSchema.validate(body);
+router.get("/", ctrl.list);
 
-  if (validationError) {
-    res.status(400).json({ message: validationError.details[0].message });
-    return;
-  }
 
-  try {
-    const addedContact = await addContact(body);
+router.get("/:id", isValidId, ctrl.getById);
 
-    res.status(201).json(addedContact);
-  } catch {
-    res.status(500).json({ text: 'Server error has occured.' });
-  }
-})
+router.post("/", validateBody(schemas.addSchema), ctrl.addById);
 
-router.delete('/:id', async (req, res) => {
-  const id = req.params.id;
+router.delete('/:id', isValidId, ctrl.deleteById);
 
-  try {
-    const removedContact = await removeContact(id);
+router.put('/:id', isValidId, validateBody(schemas.addSchema), ctrl.updateById);
 
-    if (!removedContact) {
-      res.status(404).json('Contact has not been found.');
-    }
-
-    res.json(removedContact);
-  } catch {
-    res.status(500).json({ text: 'Server error has occured.' });
-  }
-})
-
-router.put('/:id', async (req, res) => {
-  const id = req.params.id;
-  const body = req.body;
-
-  const { error: validationError } = updateSchema.validate(body);
-
-  if (validationError) {
-    res.status(400).json({ message: validationError.details[0].message });
-    return;
-  }
-
-  try {
-    const updatedContact = await updateContact(id, body);
-
-    if (!updatedContact) {
-      res.status(404).json({ message: 'Contact has not been found.' });
-    }
-
-    res.json(updatedContact);
-  } catch {
-    res.status(500).json({ text: 'Server error has occured.' });
-  }
-})
+router.patch('/:id/favorite', isValidId, validateBody(schemas.updateFavoriteSchema), ctrl.updateFavorite);
 
 module.exports = router
-
- 
