@@ -1,0 +1,29 @@
+const express = require("express");
+const {httpError} = require("../helpers");
+const ctrl = require("../../controllers/auth");
+const router = express.Router();
+const {authenticate} = require("../../middlewares");
+const {schemas} = require("../../models/user");
+
+
+
+const validateBody = schema => {
+    const func = (req, res, next) => {
+        const {error} = schema.validate(req.body);
+        if(error) {
+          next(httpError(400, error.message));
+        }
+        next()
+    }
+    return func;
+}
+
+
+
+router.post("/register", validateBody(schemas.registerSchema), ctrl.register);
+
+router.post("/login", validateBody(schemas.loginSchema), ctrl.login);
+
+router.post("/logout", authenticate, ctrl.logout);
+
+module.exports = router;
