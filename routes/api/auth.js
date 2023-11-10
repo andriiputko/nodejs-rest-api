@@ -18,9 +18,11 @@ const validateBody = schema => {
     return func;
 }
 
-
+router.get("/users/verify/:verificationToken", ctrl.register);
 
 router.post("/register", validateBody(schemas.registerSchema), ctrl.register);
+
+router.post("/users/verify", validateBody(schemas.userEmailSchema),);
 
 router.post("/login", validateBody(schemas.loginSchema), ctrl.login);
 
